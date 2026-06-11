@@ -23,6 +23,14 @@ try {
   const exePath = require.resolve(`${packageName}/bin/${exeName}`);
   if (fs.existsSync(exePath)) {
     console.log(`directree native binary found at ${exePath}`);
+    if (platform !== 'win32') {
+      try {
+        fs.chmodSync(exePath, 0o755);
+        console.log(`Successfully set executable permissions on ${exePath}`);
+      } catch (chmodErr) {
+        console.warn(`Failed to set executable permissions on ${exePath}: ${chmodErr.message}`);
+      }
+    }
   } else {
     console.warn(`directree native binary not found at expected path: ${exePath}`);
   }

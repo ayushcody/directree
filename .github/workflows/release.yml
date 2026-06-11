@@ -46,7 +46,7 @@ jobs:
           mkdir -p npm/platforms/${{ matrix.npm_dir }}/bin
           cp target/${{ matrix.target }}/release/${{ matrix.bin }} npm/platforms/${{ matrix.npm_dir }}/bin/
           if [ "${{ matrix.npm_dir }}" != "win32-x64" ]; then
-            chmod +x npm/platforms/${{ matrix.npm_dir }}/bin/directree
+            chmod 755 npm/platforms/${{ matrix.npm_dir }}/bin/directree
           fi
 
       - name: Upload artifact
@@ -81,6 +81,13 @@ jobs:
           mv npm/platforms/platform-darwin-x64/* npm/platforms/darwin-x64/ || true
           mv npm/platforms/platform-darwin-arm64/* npm/platforms/darwin-arm64/ || true
           mv npm/platforms/platform-win32-x64/* npm/platforms/win32-x64/ || true
+
+      - name: Ensure executable permissions
+        run: |
+          chmod 755 npm/platforms/darwin-arm64/bin/directree || true
+          chmod 755 npm/platforms/darwin-x64/bin/directree || true
+          chmod 755 npm/platforms/linux-x64/bin/directree || true
+          ls -l npm/platforms/*/bin/ || true
 
       - name: Publish platform packages
         env:

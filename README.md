@@ -32,6 +32,16 @@ npm install -g contextree
 
 *Note: This installs the CLI under the package name `contextree`, making both `contextree` and `directree` commands available on your system.*
 
+#### Troubleshooting `EACCES: permission denied`
+If you encounter a permission error while installing globally, you can either run the command with `sudo`:
+```bash
+sudo npm install -g contextree
+```
+Or fix your local npm directory permissions permanently (recommended):
+```bash
+sudo chown -R $(whoami) /usr/local/lib/node_modules /usr/local/bin /usr/local/share
+```
+
 ### via cargo
 
 ```bash

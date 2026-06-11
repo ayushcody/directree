@@ -1,6 +1,6 @@
 {
   "name": "contextree",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI-optimized project tree — fast, filtered, context-ready",
   "bin": {
     "contextree": "bin/directree.js",
@@ -10,10 +10,10 @@
     "postinstall": "node install.js"
   },
   "optionalDependencies": {
-    "@directree/darwin-arm64": "0.2.0",
-    "@directree/darwin-x64": "0.2.0",
-    "@directree/linux-x64": "0.2.0",
-    "@directree/win32-x64": "0.2.0"
+    "@directree/darwin-arm64": "0.2.1",
+    "@directree/darwin-x64": "0.2.1",
+    "@directree/linux-x64": "0.2.1",
+    "@directree/win32-x64": "0.2.1"
   },
   "repository": {
     "type": "git",

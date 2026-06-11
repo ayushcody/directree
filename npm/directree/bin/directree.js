@@ -2,6 +2,7 @@
 
 const os = require('os');
 const path = require('path');
+const fs = require('fs');
 const { spawnSync } = require('child_process');
 
 const platform = os.platform();
@@ -25,6 +26,11 @@ const exeName = platform === 'win32' ? 'directree.exe' : 'directree';
 
 try {
   const exePath = require.resolve(`${packageName}/bin/${exeName}`);
+  try {
+    fs.chmodSync(exePath, 0o755);
+  } catch (_) {
+    // Ignore chmod failure; spawnSync will show the real error if it still cannot run.
+  }
   const result = spawnSync(exePath, process.argv.slice(2), { stdio: 'inherit' });
   if (result.error) {
     throw result.error;

@@ -27,8 +27,10 @@ my-app/
 ### via npm (Recommended)
 
 ```bash
-npm install -g directree
+npm install -g contextree
 ```
+
+*Note: This installs the CLI under the package name `contextree`, making both `contextree` and `directree` commands available on your system.*
 
 ### via cargo
 
@@ -41,33 +43,33 @@ cargo install --path .
 Add aliases to your shell:
 
 ```bash
-alias dt="directree"
-alias dta="directree --ai"
-alias dtf="directree --flat"
+alias dt="contextree"
+alias dta="contextree --ai"
+alias dtf="contextree --flat"
 ```
 
 ---
 
 ## Usage
 
-```
-directree [PATH] [OPTIONS]
+```bash
+contextree [PATH] [OPTIONS]
 ```
 
 | Command | What it does |
 |---------|-------------|
-| `directree` | Tree of current dir |
-| `directree --ai` | AI context-ready XML output with annotations |
-| `directree --ai --stats` | AI output + token cost estimate |
-| `directree --flat` | Flat path list — cheapest token format |
-| `directree --group` | Files grouped by type (source/config/test/asset) |
-| `directree --format json` | Structured JSON tree |
-| `directree src --depth 3` | Subdir, max 3 levels deep |
-| `directree --only ts,tsx` | Only TypeScript files |
-| `directree --focus src/components` | Zoom into subpath with breadcrumb |
-| `directree --collapse` | Collapse repeated sibling patterns |
-| `directree --show-ignore` | See all active ignore rules |
-| `directree --stats` | File counts + estimated tokens |
+| `contextree` | Tree of current dir |
+| `contextree --ai` | AI context-ready XML output with annotations |
+| `contextree --ai --stats` | AI output + token cost estimate |
+| `contextree --flat` | Flat path list — cheapest token format |
+| `contextree --group` | Files grouped by type (source/config/test/asset) |
+| `contextree --format json` | Structured JSON tree |
+| `contextree src --depth 3` | Subdir, max 3 levels deep |
+| `contextree --only ts,tsx` | Only TypeScript files |
+| `contextree --focus src/components` | Zoom into subpath with breadcrumb |
+| `contextree --collapse` | Collapse repeated sibling patterns |
+| `contextree --show-ignore` | See all active ignore rules |
+| `contextree --stats` | File counts + estimated tokens |
 
 ---
 

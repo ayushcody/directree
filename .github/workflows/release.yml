@@ -45,6 +45,9 @@ jobs:
         run: |
           mkdir -p npm/platforms/${{ matrix.npm_dir }}/bin
           cp target/${{ matrix.target }}/release/${{ matrix.bin }} npm/platforms/${{ matrix.npm_dir }}/bin/
+          if [ "${{ matrix.npm_dir }}" != "win32-x64" ]; then
+            chmod +x npm/platforms/${{ matrix.npm_dir }}/bin/directree
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -86,8 +89,18 @@ jobs:
           cd npm/platforms
           for dir in linux-x64 darwin-x64 darwin-arm64 win32-x64; do
             if [ -d "$dir" ]; then
-              echo "Publishing $dir..."
-              (cd "$dir" && npm publish --access public)
+              echo "Checking $dir..."
+              cd "$dir"
+              PKG_NAME=$(node -p "require('./package.json').name")
+              PKG_VERSION=$(node -p "require('./package.json').version")
+              EXISTING_VERSION=$(npm view "$PKG_NAME@$PKG_VERSION" version 2>/dev/null || true)
+              if [ "$EXISTING_VERSION" = "$PKG_VERSION" ]; then
+                echo "$PKG_NAME@$PKG_VERSION already exists, skipping publish."
+              else
+                echo "Publishing $PKG_NAME@$PKG_VERSION..."
+                npm publish --access public
+              fi
+              cd ..
             fi
           done
 
@@ -96,4 +109,12 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
         run: |
           cd npm/directree
-          npm publish --access public
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          EXISTING_VERSION=$(npm view "$PKG_NAME@$PKG_VERSION" version 2>/dev/null || true)
+          if [ "$EXISTING_VERSION" = "$PKG_VERSION" ]; then
+            echo "$PKG_NAME@$PKG_VERSION already exists, skipping publish."
+          else
+            echo "Publishing $PKG_NAME@$PKG_VERSION..."
+            npm publish --access public
+          fi

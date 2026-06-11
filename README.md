@@ -1,6 +1,6 @@
 # directree
 
-**AI-optimized project tree. Fast. Filtered. Context-ready.**
+**AI-optimized project tree. Fast. Efficient. Context-ready.**
 
 `directree` gives you a clean, signal-rich view of your project structure — purpose-built for pasting into AI context windows. Filters noise automatically, adds semantic annotations, and estimates token cost.
 

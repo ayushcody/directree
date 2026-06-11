@@ -1,0 +1,30 @@
+{
+  "name": "directree",
+  "version": "0.2.0",
+  "description": "AI-optimized project tree — fast, filtered, context-ready",
+  "bin": {
+    "directree": "bin/directree.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "optionalDependencies": {
+    "@directree/darwin-arm64": "0.2.0",
+    "@directree/darwin-x64": "0.2.0",
+    "@directree/linux-x64": "0.2.0",
+    "@directree/win32-x64": "0.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ayushcody/directree.git"
+  },
+  "keywords": [
+    "tree",
+    "ai",
+    "llm",
+    "context",
+    "cli"
+  ],
+  "author": "ayushcody",
+  "license": "MIT"
+}

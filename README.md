@@ -24,8 +24,16 @@ my-app/
 
 ## Install
 
+### via npm (Recommended)
+
 ```bash
-git clone https://github.com/ayush/directree
+npm install -g directree
+```
+
+### via cargo
+
+```bash
+git clone https://github.com/ayushcody/directree
 cd directree
 cargo install --path .
 ```

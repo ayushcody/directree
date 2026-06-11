@@ -1,0 +1,16 @@
+{
+  "name": "@directree/win32-x64",
+  "version": "0.2.0",
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ayushcody/directree.git"
+  },
+  "author": "ayushcody",
+  "license": "MIT"
+}

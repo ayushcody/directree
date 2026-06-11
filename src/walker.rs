@@ -1,22 +1,33 @@
 use std::path::{Path, PathBuf};
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use crate::cli::Args;
 use crate::detector::{Framework, classify_file};
 use crate::ignorer::Ignorer;
 use crate::tree::{TreeNode, NodeKind};
+use crate::importance::ImportanceScore;
 
 pub struct Walker {
     root: PathBuf,
     framework: Framework,
     ignorer: Ignorer,
-    max_depth: usize,          // 0 = unlimited
+    max_depth: usize,
     show_hidden: bool,
     only_exts: Option<HashSet<String>>,
     collapse: bool,
+    since_files: Option<HashSet<PathBuf>>,   // relative paths from git
+    repo_root: Option<PathBuf>,              // for resolving git paths
+    pub importance: HashMap<PathBuf, ImportanceScore>,
 }
 
 impl Walker {
-    pub fn new(args: &Args, root: PathBuf, framework: Framework, mut ignorer: Ignorer) -> Self {
+    pub fn new(
+        args: &Args,
+        root: PathBuf,
+        framework: Framework,
+        mut ignorer: Ignorer,
+        since_files: Option<HashSet<PathBuf>>,
+        repo_root: Option<PathBuf>,
+    ) -> Self {
         ignorer.load_local_ignore(&root);
 
         let only_exts = args.only.as_ref().map(|s| {
@@ -34,10 +45,13 @@ impl Walker {
             show_hidden: args.hidden,
             only_exts,
             collapse: args.collapse,
+            since_files,
+            repo_root,
+            importance: HashMap::new(),
         }
     }
 
-    pub fn walk(&self) -> TreeNode {
+    pub fn walk(&mut self) -> TreeNode {
         let root_name = self.root
             .file_name()
             .and_then(|n| n.to_str())
@@ -45,7 +59,7 @@ impl Walker {
             .to_string();
 
         let mut root_node = TreeNode::new_dir(root_name, self.root.clone(), 0);
-        self.walk_dir(&self.root, &mut root_node, 0);
+        self.walk_dir(&self.root.clone(), &mut root_node, 0);
 
         if self.collapse {
             collapse_repeated(&mut root_node);
@@ -70,7 +84,6 @@ impl Walker {
                 None => continue,
             };
 
-            // Apply ignore rules
             if self.ignorer.is_ignored(&path, self.show_hidden) {
                 continue;
             }
@@ -82,20 +95,19 @@ impl Walker {
             }
         }
 
-        // Sort: dirs first, then files — both alphabetically
+        // Sort: dirs first, then files — both alphabetical
         dirs.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
         files.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
-        // Recurse into dirs
         let next_depth = depth + 1;
         let can_recurse = self.max_depth == 0 || next_depth <= self.max_depth;
 
+        // Recurse into dirs
         for (name, path) in dirs {
             let mut dir_node = TreeNode::new_dir(name, path.clone(), next_depth);
             if can_recurse {
                 self.walk_dir(&path, &mut dir_node, next_depth);
             } else {
-                // Mark as truncated with child count hint
                 let count = count_entries_fast(&path);
                 if count > 0 {
                     dir_node.children.push(TreeNode {
@@ -109,7 +121,10 @@ impl Walker {
                     });
                 }
             }
-            // Only add dir if it has children OR we want empty dirs
+            // --since: only include dir if it has any matching children
+            if self.since_files.is_some() && dir_node.children.is_empty() {
+                continue;
+            }
             node.children.push(dir_node);
         }
 
@@ -127,109 +142,109 @@ impl Walker {
                 }
             }
 
+            // --since filter: check if this file is in the changed set
+            if let Some(ref changed) = self.since_files {
+                let rel = self.relative_to_repo(&path);
+                if !changed.contains(&rel) {
+                    continue;
+                }
+            }
+
             let role = classify_file(&path, &self.framework);
             let file_node = TreeNode::new_file(name, path, next_depth, role, ext);
             node.children.push(file_node);
         }
 
-        // Remove empty dirs when extension filter is active
-        if self.only_exts.is_some() {
-            node.children.retain(|c| {
-                !c.is_empty_dir()
-            });
+        // Remove empty dirs when filtering is active
+        if self.only_exts.is_some() || self.since_files.is_some() {
+            node.children.retain(|c| !c.is_empty_dir());
         }
+    }
+
+    /// Resolve absolute path to a repo-relative path for --since comparison
+    fn relative_to_repo(&self, abs: &Path) -> PathBuf {
+        if let Some(ref repo) = self.repo_root {
+            if let Ok(rel) = abs.strip_prefix(repo) {
+                return rel.to_path_buf();
+            }
+        }
+        // Fallback: strip scan root
+        if let Ok(rel) = abs.strip_prefix(&self.root) {
+            return rel.to_path_buf();
+        }
+        abs.to_path_buf()
     }
 }
 
-/// Count direct entries in a dir quickly (for depth-limit hint)
 fn count_entries_fast(dir: &Path) -> usize {
     std::fs::read_dir(dir)
-        .map(|entries| entries.flatten().count())
+        .map(|e| e.flatten().count())
         .unwrap_or(0)
 }
 
-/// Detect and collapse repeated sibling patterns in a dir node
 fn collapse_repeated(node: &mut TreeNode) {
-    // Recurse first
     for child in node.children.iter_mut() {
         if child.is_dir() {
             collapse_repeated(child);
         }
     }
 
-    // Collect dir children that share the same "shape"
-    // Shape = sorted set of child extensions
     let mut shape_groups: std::collections::HashMap<String, Vec<usize>> = Default::default();
-
     for (i, child) in node.children.iter().enumerate() {
         if child.is_dir() && !child.children.is_empty() {
-            let shape = dir_shape(child);
-            shape_groups.entry(shape).or_default().push(i);
+            shape_groups.entry(dir_shape(child)).or_default().push(i);
         }
     }
 
-    // Find groups of 4+ identical-shape siblings → collapse
-    let mut to_collapse: Vec<(Vec<usize>, String)> = Vec::new();
-    for (shape, indices) in &shape_groups {
-        if indices.len() >= 4 {
-            to_collapse.push((indices.clone(), shape.clone()));
-        }
-    }
+    let to_collapse: Vec<(Vec<usize>, String)> = shape_groups
+        .into_iter()
+        .filter(|(_, v)| v.len() >= 4)
+        .map(|(k, v)| (v, k))
+        .collect();
 
     if to_collapse.is_empty() { return; }
 
-    // Build new children list
     let mut collapsed_indices: HashSet<usize> = HashSet::new();
-    let mut collapse_nodes: Vec<(usize, TreeNode)> = Vec::new(); // (insertion_pos, node)
+    let mut collapse_nodes: Vec<(usize, TreeNode)> = Vec::new();
 
-    for (indices, _shape) in &to_collapse {
-        let first_idx = indices[0];
+    for (indices, _) in &to_collapse {
+        let first = indices[0];
         let count = indices.len();
-        let pattern = node.children[first_idx].name.clone();
-
+        let pattern = node.children[first].name.clone();
         let collapsed = TreeNode {
             name: format!("{} ×{} (similar structure)", pattern, count),
-            path: node.children[first_idx].path.clone(),
-            kind: NodeKind::Collapsed { count, pattern: pattern.clone() },
+            path: node.children[first].path.clone(),
+            kind: NodeKind::Collapsed { count, pattern },
             children: vec![],
             role: crate::detector::FileRole::Unknown,
             ext: None,
-            depth: node.children[first_idx].depth,
+            depth: node.children[first].depth,
         };
-
-        for &idx in indices {
-            collapsed_indices.insert(idx);
-        }
-        collapse_nodes.push((first_idx, collapsed));
+        for &idx in indices { collapsed_indices.insert(idx); }
+        collapse_nodes.push((first, collapsed));
     }
 
-    // Rebuild children
-    let old_children = std::mem::take(&mut node.children);
-    let mut new_children: Vec<TreeNode> = Vec::new();
+    let old = std::mem::take(&mut node.children);
     let mut inserted: HashSet<usize> = HashSet::new();
 
-    for (i, child) in old_children.into_iter().enumerate() {
+    for (i, child) in old.into_iter().enumerate() {
         if collapsed_indices.contains(&i) {
             if let Some(pos) = collapse_nodes.iter().position(|(idx, _)| *idx == i) {
                 if !inserted.contains(&pos) {
-                    new_children.push(collapse_nodes[pos].1.clone());
+                    node.children.push(collapse_nodes[pos].1.clone());
                     inserted.insert(pos);
                 }
             }
         } else {
-            new_children.push(child);
+            node.children.push(child);
         }
     }
-
-    node.children = new_children;
 }
 
-/// Compute a "shape fingerprint" for a directory node
 fn dir_shape(node: &TreeNode) -> String {
     let mut exts: Vec<String> = node.children.iter()
         .filter_map(|c| c.ext.clone())
         .collect();
-    exts.sort();
-    exts.dedup();
+    exts.sort(); exts.dedup();
     exts.join(",")
 }

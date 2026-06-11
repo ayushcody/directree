@@ -318,3 +318,87 @@ pub fn estimate_tokens(root: &TreeNode) -> usize {
     }
     ((chars(root) as f64 * 1.3) as usize / 4).max(1)
 }
+
+// ── Important overlay ─────────────────────────────────────────────────────────
+
+use std::collections::HashMap;
+use crate::importance::ImportanceScore;
+
+pub fn render_tree_important(
+    root: &TreeNode,
+    args: &Args,
+    scores: &HashMap<std::path::PathBuf, ImportanceScore>,
+) -> String {
+    let col = use_color(args);
+    let mut out = String::new();
+    out.push_str(&c_dir(&format!("{}/", root.name), col));
+    out.push('\n');
+    render_children_important(&root.children, "", col, scores, &mut out);
+    out
+}
+
+fn render_children_important(
+    children: &[TreeNode],
+    prefix: &str,
+    col: bool,
+    scores: &HashMap<std::path::PathBuf, ImportanceScore>,
+    out: &mut String,
+) {
+    let last = children.len().saturating_sub(1);
+    for (i, node) in children.iter().enumerate() {
+        let is_last = i == last;
+        let connector = if is_last { "└── " } else { "├── " };
+        let next_pfx = format!("{}{}   ", prefix, if is_last { " " } else { "│" });
+
+        match &node.kind {
+            NodeKind::File => {
+                let score = scores.get(&node.path);
+                let star = score.and_then(|s| s.label()).unwrap_or("");
+                let star_str = if !star.is_empty() && col {
+                    format!(" {}", Color::bright_green(star))
+                } else if !star.is_empty() {
+                    format!(" {}", star)
+                } else {
+                    String::new()
+                };
+                // Dim unimportant files
+                let name_str = if score.map(|s| s.is_important()).unwrap_or(false) {
+                    c_file(&node.name, &node.role, col)
+                } else {
+                    c_dim(&node.name, col)
+                };
+                let ann = node.role.annotation()
+                    .map(|a| c_dim(&format!("  [{}]", a), col))
+                    .unwrap_or_default();
+                out.push_str(&format!("{}{}{}{}{}\n", prefix, connector, name_str, star_str, ann));
+            }
+            NodeKind::Dir => {
+                out.push_str(&format!("{}{}{}\n", prefix, connector,
+                    c_dir(&format!("{}/", node.name), col)));
+                if !node.children.is_empty() {
+                    render_children_important(&node.children, &next_pfx, col, scores, out);
+                }
+            }
+            NodeKind::Collapsed { count, .. } => {
+                out.push_str(&format!("{}{}{}\n", prefix, connector,
+                    c_dim(&format!("… {} more", count), col)));
+            }
+        }
+    }
+}
+
+// ── Since header ──────────────────────────────────────────────────────────────
+
+pub fn render_since_header(git_ref: &str, commit_msgs: &[String], col: bool) -> String {
+    let mut out = String::new();
+    out.push_str(&c_dim(&format!("── changed since {} ", git_ref), col));
+    out.push_str(&c_dim(&"─".repeat(40usize.saturating_sub(git_ref.len() + 18)), col));
+    out.push('\n');
+    if !commit_msgs.is_empty() {
+        for msg in commit_msgs.iter().take(3) {
+            out.push_str(&c_dim(&format!("  {}\n", msg), col));
+        }
+    }
+    out.push('\n');
+    out
+}

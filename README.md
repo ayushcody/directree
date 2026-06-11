@@ -106,7 +106,48 @@ ignore = ["*.log", "scripts/migrations/", "**/*.generated.ts"]
 
 ---
 
-## Token cost reference
+## v0.2 Features
+
+| Feature | Usage |
+|---------|-------|
+| **Clipboard** | `directree --ai --copy` → output straight to clipboard |
+| **Git diff** | `directree --since HEAD~1` → only changed files |
+| **Importance** | `directree --important` → ★ marks entry points, hot files, core infra |
+| **Watch mode** | `directree --watch --ai` → live refresh on file save |
+| **Init** | `directree init` → scaffold `.directreeignore` for your framework |
+| **Completions** | `directree completions zsh` → tab completions for all flags |
+
+### Shell setup (one-time)
+
+```bash
+# Zsh
+source <(directree completions zsh)
+
+# Bash
+source <(directree completions bash)
+
+# Fish — save to completions dir
+directree completions fish > ~/.config/fish/completions/directree.fish
+```
+
+### Live AI context refresh workflow
+
+```bash
+# Terminal 1: keep AI context fresh as you code
+directree --watch --ai --copy
+
+# Paste once in Claude/GPT — re-paste after each file save (1 keystroke)
+```
+
+### Git diff workflow
+
+```bash
+directree --since HEAD~1 --ai     # what changed in last commit, AI-ready
+directree --since main --ai       # your branch's changes vs main
+directree --since HEAD --flat     # uncommitted changes as flat list
+```
+
+
 
 | Mode | 50-file project | 500-file project |
 |------|----------------|-----------------|

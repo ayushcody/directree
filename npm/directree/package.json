@@ -1,8 +1,9 @@
 {
-  "name": "directree",
-  "version": "0.2.0",
+  "name": "contextree",
+  "version": "1.0.0",
   "description": "AI-optimized project tree — fast, filtered, context-ready",
   "bin": {
+    "contextree": "bin/directree.js",
     "directree": "bin/directree.js"
   },
   "scripts": {
@@ -18,13 +19,7 @@
     "type": "git",
     "url": "git+https://github.com/ayushcody/directree.git"
   },
-  "keywords": [
-    "tree",
-    "ai",
-    "llm",
-    "context",
-    "cli"
-  ],
+  "keywords": ["tree", "ai", "llm", "context", "cli", "project-structure"],
   "author": "ayushcody",
   "license": "MIT"
 }
